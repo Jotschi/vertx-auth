@@ -29,7 +29,7 @@ import io.vertx.core.Future;
  *   <li>{@link  #impersonate()} - Require a re-authentication to switch user identities</li>
  *   <li>{@link  #restore()} - De-escalate a previous impersonate call</li>
  *   <li>{@link  #logout()} - Logout the user from this application and redirect to a uri</li>
- *   <li>{@link  #clear()} - Same as logout, without requirind a redirect</li>
+ *   <li>{@link  #clear()} - Same as logout, without requiring a redirect</li>
  * </ul>
  */
 @VertxGen

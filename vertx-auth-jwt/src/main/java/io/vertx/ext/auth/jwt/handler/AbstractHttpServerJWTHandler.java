@@ -63,10 +63,14 @@ public abstract class AbstractHttpServerJWTHandler<C extends AuthenticationConte
 
         SecurityAudit audit = invokeAudit(token, context);
 
-        return authProvider
-          .authenticate(new TokenCredentials(token))
-          .andThen(op -> audit.audit(Marker.AUTHENTICATION, op.succeeded()))
-          .recover(err -> Future.failedFuture(new HttpException(401, err)));
+        Future<User> fut = authProvider
+          .authenticate(new TokenCredentials(token));
+          
+        if (audit!=null)  {
+          fut = fut.andThen(op -> audit.audit(Marker.AUTHENTICATION, op.succeeded()));
+        }
+          
+        return fut.recover(err -> Future.failedFuture(new HttpException(401, err)));
       });
   }
 

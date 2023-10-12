@@ -70,6 +70,7 @@ public interface AuthenticationContext {
    */
   void fail(int statusCode, Throwable throwable);
 
+  // TODO maybe get rid of this in favour of postAuthentication method
   default void onSuccess(User authenticated) {
     // NOOP
   }

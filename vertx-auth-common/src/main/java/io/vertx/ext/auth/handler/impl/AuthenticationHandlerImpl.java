@@ -22,6 +22,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.auth.AuthenticationContext;
 import io.vertx.ext.auth.HttpException;
 import io.vertx.ext.auth.User;
+import io.vertx.ext.auth.UserContextInternal;
 import io.vertx.ext.auth.authentication.AuthenticationProvider;
 import io.vertx.ext.auth.handler.AuthenticationHandlerInternal;
 
@@ -84,7 +85,9 @@ public abstract class AuthenticationHandlerImpl<T extends AuthenticationProvider
     // perform the authentication
     authenticate(ctx)
       .onSuccess(authenticated -> {
-        
+        ((UserContextInternal) ctx.user())
+        .setUser(authenticated);
+
         ctx.onSuccess(authenticated);
 
         postAuthentication(ctx);

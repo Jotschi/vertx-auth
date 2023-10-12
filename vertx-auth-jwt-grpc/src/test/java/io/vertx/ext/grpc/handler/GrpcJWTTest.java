@@ -5,28 +5,26 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import io.grpc.MethodDescriptor;
 import io.metaloom.loom.poc.proto.GreeterGrpc;
 import io.metaloom.loom.poc.proto.HelloReply;
 import io.metaloom.loom.poc.proto.HelloRequest;
-import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.SocketAddress;
+import io.vertx.ext.auth.AuthenticationContext;
 import io.vertx.ext.auth.KeyStoreOptions;
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.authentication.TokenCredentials;
-import io.vertx.ext.auth.handler.JWTClientHandler;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.grpc.handler.impl.GrpcAuthenticationContextImpl;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.grpc.client.GrpcClient;
-import io.vertx.grpc.client.GrpcClientRequest;
 import io.vertx.grpc.server.GrpcServer;
 import io.vertx.grpc.server.GrpcServerRequest;
 import io.vertx.grpc.server.GrpcServerResponse;
@@ -57,10 +55,13 @@ public class GrpcJWTTest {
     JWTAuth authProvider = JWTAuth.create(vertx, authConfig);
 
     GrpcServer grpcServer = GrpcServer.server(vertx);
-    
-    HttpServerJWTHandler handler = HttpServerJWTHandler.create(authProvider);
 
-    HttpServer server = vertx.createHttpServer().requestHandler(grpcServer);
+    HttpServerJWTHandler jwtHandler = HttpServerJWTHandler.create(authProvider, grpcServer);
+
+    HttpServer server = vertx.createHttpServer().requestHandler(req -> {
+      AuthenticationContext ctx = new GrpcAuthenticationContextImpl(req);
+      jwtHandler.handle(ctx);
+    });
     server.listen(0);
     int port = server.actualPort();
     String token = authProvider.generateToken(new JsonObject());
@@ -68,14 +69,14 @@ public class GrpcJWTTest {
     // Create the method handler which does require authentication
     grpcServer.callHandler(GreeterGrpc.getSayHelloMethod(), request -> {
       User user = request.user();
-
       printHeaders(request);
+      System.out.println("User: " + user);
       request.handler(hello -> {
 
         // log.info("Server got hello request with name {} from {}", hello.getName(), user.subject());
         GrpcServerResponse<HelloRequest, HelloReply> response = request.response();
         HelloReply reply = HelloReply.newBuilder()
-          .setMessage("Reply with " + hello.getName() + " got user: " + user)
+          .setMessage("Reply with " + hello.getName() + " got user: " + null)
           .build();
         response.end(reply);
       });
@@ -96,6 +97,9 @@ public class GrpcJWTTest {
       }).onSuccess(reply -> {
         System.out.println("Received " + reply.getMessage());
         test.complete();
+      }).onFailure(error -> {
+        error.printStackTrace();
+        should.fail(error);
       });
 
     test.await();
